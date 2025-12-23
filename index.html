@@ -21,7 +21,10 @@
             background-color: #000;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: white;
-            touch-action: none;
+            touch-action: none; /* Critical for mobile game performance */
+            user-select: none; /* Prevents text selection on long press */
+            -webkit-user-select: none;
+            -webkit-touch-callout: none; /* Prevents iOS context menu */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -163,6 +166,9 @@
             justify-content: space-between;
             padding: 0 20px;
             box-sizing: border-box;
+            /* Respect safe area for iPhones */
+            padding-bottom: env(safe-area-inset-bottom);
+            bottom: calc(20px + env(safe-area-inset-bottom));
         }
 
         .control-group {
@@ -187,6 +193,7 @@
             backdrop-filter: blur(5px);
             touch-action: manipulation;
             transition: background 0.1s;
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
         }
 
         .touch-btn:active, .touch-btn.active {
@@ -842,17 +849,22 @@ class Game {
 
         const addTouch = (id, key) => {
             const el = document.getElementById(id);
-            el.addEventListener('touchstart', (e) => { 
-                e.preventDefault(); 
-                if(key === 'jump' && this.state === 'PLAYING') this.player.jump();
-                else this.keys[key] = true; 
-                el.classList.add('active');
-            });
-            el.addEventListener('touchend', (e) => { 
-                e.preventDefault(); 
-                if(key !== 'jump') this.keys[key] = false; 
-                el.classList.remove('active');
-            });
+            // Unified touch handler
+            const handleTouch = (e) => {
+                e.preventDefault(); // Prevent ghost clicks/scrolling
+                if (e.type === 'touchstart') {
+                    if (key === 'jump' && this.state === 'PLAYING') this.player.jump();
+                    else this.keys[key] = true;
+                    el.classList.add('active');
+                } else if (e.type === 'touchend' || e.type === 'touchcancel') {
+                    if (key !== 'jump') this.keys[key] = false;
+                    el.classList.remove('active');
+                }
+            };
+
+            el.addEventListener('touchstart', handleTouch, {passive: false});
+            el.addEventListener('touchend', handleTouch, {passive: false});
+            el.addEventListener('touchcancel', handleTouch, {passive: false});
         };
         addTouch('btn-left', 'left'); addTouch('btn-right', 'right'); addTouch('btn-jump', 'jump');
         window.addEventListener('click', () => { if(this.audio.enabled) this.audio.startMusic(); }, {once:true});
